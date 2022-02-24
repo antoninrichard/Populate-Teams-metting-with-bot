@@ -18,14 +18,11 @@ from msedge.selenium_tools import Edge, EdgeOptions
 from fng_api import *
 
 browser: webdriver.Chrome = None
-total_members = None
 config = None
-meetings = []
 
 active_correlation_id = ""
 hangup_thread: Timer = None
 conversation_link = "https://teams.microsoft.com/_#/conversations/a"
-mode = 3
 uuid_regex = r"\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}\b"
 #Chargement du JSON de config en variable global
 def load_config():
@@ -175,8 +172,28 @@ def getFakeName():
     identity = getIdentity(country=["fr"],nameset=["fr"],minage="18",maxage="35",gender="85")
     return identity.name
 
+def sendMessage(message):
+    try:
+        browser.execute_script("document.getElementById('chat-button').click()")
+        text_input = wait_until_found('div[role="textbox"] > div', 5)
+
+        js_change_text = """
+          var elm = arguments[0], txt = arguments[1];
+          elm.innerHTML = txt;
+          """
+
+        browser.execute_script(js_change_text, text_input, message)
+
+        time.sleep(5)
+        send_button = wait_until_found("#send-message-button", 5)
+        send_button.click()
+        print(f'Sent message {message}')
+    except (exceptions.JavascriptException, exceptions.ElementNotInteractableException):
+        print(f"Failed to send message {message}")
+        pass
+
 def main():
-    global config, meetings, mode, conversation_link, total_members, name
+    global config, meetings, conversation_link, total_members, name
 
     conversation_link = config["conversation_url"]
     init_browser()
@@ -224,24 +241,7 @@ def main():
 
     if "join_message" in config and config["join_message"] != "":
         time.sleep(10)
-        try:
-            browser.execute_script("document.getElementById('chat-button').click()")
-            text_input = wait_until_found('div[role="textbox"] > div', 5)
-
-            js_change_text = """
-              var elm = arguments[0], txt = arguments[1];
-              elm.innerHTML = txt;
-              """
-
-            browser.execute_script(js_change_text, text_input, config["join_message"])
-
-            time.sleep(5)
-            send_button = wait_until_found("#send-message-button", 5)
-            send_button.click()
-            print(f'Sent message {config["join_message"]}')
-        except (exceptions.JavascriptException, exceptions.ElementNotInteractableException):
-            print("Failed to send join message")
-            pass
+        sendMessage(config["join_message"])
 
     check_interval = 5
     if "check_interval" in config and config['check_interval'] > 1:
@@ -249,7 +249,7 @@ def main():
 
     interval_count = 0
     total_members = 0
-    while 1:
+    '''while 1:
         members_count = None
         members_count = get_meeting_members()
 
@@ -266,7 +266,7 @@ def main():
         if browser.current_url.__contains__("post-calling"):
             break
 
-        time.sleep(check_interval)
+        time.sleep(check_interval)'''
 
 
 if __name__ == "__main__":
